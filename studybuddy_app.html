@@ -1,0 +1,774 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:#F8FAFC;color:#1E293B;min-height:100vh}
+.dark body{background:#0F172A;color:#F1F5F9}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script>
+const{useState,useEffect,useRef,useCallback}=React;
+const C={primary:"#6366F1",pDark:"#4F46E5",pLight:"#EEF2FF",secondary:"#22C55E",sLight:"#F0FDF4",accent:"#F59E0B",aLight:"#FFFBEB",danger:"#EF4444",dLight:"#FEF2F2",purple:"#8B5CF6",bg:"#F8FAFC",card:"#FFFFFF",text:"#1E293B",muted:"#64748B",border:"#E2E8F0",dbg:"#0F172A",dcard:"#1E293B",dborder:"#334155",dmuted:"#94A3B8"};
+const SCOLS=["#6366F1","#22C55E","#F59E0B","#EF4444","#8B5CF6","#EC4899","#14B8A6","#F97316"];
+const BADGES=[{id:"first",name:"First Step",icon:"🎯",fn:s=>s.totalSessions>=1},{id:"streak3",name:"On Fire",icon:"🔥",fn:s=>s.streak>=3},{id:"hr1",name:"Hour Power",icon:"⚡",fn:s=>s.totalMinutes>=60},{id:"hr5",name:"Dedicated",icon:"📚",fn:s=>s.totalMinutes>=300},{id:"sub3",name:"Rounded",icon:"🌟",fn:(s,subs)=>subs.length>=3},{id:"pom5",name:"Pomo Pro",icon:"🍅",fn:s=>s.pomodoroCount>=5},{id:"goal1",name:"Goal Setter",icon:"🏹",fn:(s,_,goals)=>goals.length>=1},{id:"task5",name:"Task Master",icon:"✅",fn:(s,_,goals)=>goals.flatMap(g=>g.tasks||[]).filter(t=>t.done).length>=5}];
+const QUOTES=["You're doing amazing! Keep it up! 🚀","Every minute brings you closer to your goals! 💪","Consistency beats intensity! 🎯","Building your future one session at a time! 🌟","Small steps every day lead to big achievements! 🌈"];
+const today=()=>new Date().toISOString().split("T")[0];
+const pct=(a,b)=>Math.min(100,Math.round((a/Math.max(b,1))*100));
+const fmt=s=>`${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
+const _db={users:{}};
+const store={get:(e,k,d)=>{try{const v=_db[`sb_${e}_${k}`];return v!==undefined?JSON.parse(JSON.stringify(v)):d;}catch{return d;}},set:(e,k,v)=>{try{_db[`sb_${e}_${k}`]=JSON.parse(JSON.stringify(v));}catch{}},getUsers:()=>_db.users||{},saveUser:(e,d)=>{_db.users=_db.users||{};_db.users[e]=d;}};
+
+function useW(){const[w,setW]=useState(window.innerWidth);useEffect(()=>{const h=()=>setW(window.innerWidth);window.addEventListener("resize",h);return()=>window.removeEventListener("resize",h);},[]);return{isMobile:w<768,isTablet:w>=768&&w<1024};}
+
+function App(){
+  const[page,setPage]=useState("landing");
+  const[dark,setDark]=useState(false);
+  const[user,setUser]=useState(null);
+  const login=u=>{setUser(u);setDark(store.get(u.email,"darkMode",false));setPage("dashboard");};
+  const logout=()=>{if(user)store.set(user.email,"darkMode",dark);setUser(null);setPage("landing");};
+  const toggleDark=()=>{const n=!dark;setDark(n);if(user)store.set(user.email,"darkMode",n);};
+  if(page==="landing")return React.createElement(Landing,{setPage,dark,toggleDark});
+  if(page==="auth")return React.createElement(Auth,{setPage,onLogin:login,dark});
+  if(!user){setPage("auth");return null;}
+  return React.createElement(Main,{user,setUser,dark,toggleDark,logout});
+}
+
+function Landing({setPage,dark,toggleDark}){
+  const{isMobile}=useW();
+  const D=dark,bg=D?C.dbg:C.bg,cardBg=D?C.dcard:C.card,tx=D?"#F1F5F9":C.text,mu=D?C.dmuted:C.muted,bd=D?C.dborder:C.border;
+  const features=[{icon:"🎯",t:"Goal Tracker",d:"Set goals with deadlines, add tasks, track real-time completion."},{icon:"⏱",t:"Pomodoro Timer",d:"Focus sessions with break reminders and XP rewards."},{icon:"🤖",t:"AI Study Coach",d:"Ask any question, get explanations and study plans from Claude AI."},{icon:"💡",t:"Idea Planner",d:"Create custom study plans manually or let AI generate one for you."},{icon:"📈",t:"Analytics",d:"Charts, streaks, weak-subject detection and weekly summaries."},{icon:"✅",t:"Task Manager",d:"Add tasks to subjects, tick them off with real-time checkmarks."}];
+  const e=React.createElement;
+  return e("div",{style:{minHeight:"100vh",background:bg,color:tx,fontFamily:"system-ui,sans-serif"}},
+    e("nav",{style:{background:cardBg,borderBottom:`1px solid ${bd}`,padding:isMobile?"12px 16px":"15px 40px",display:"flex",justifyContent:"space-between",alignItems:"center",position:"sticky",top:0,zIndex:100}},
+      e("div",{style:{display:"flex",alignItems:"center",gap:8}},e("span",{style:{fontSize:22}},"📚"),e("span",{style:{fontWeight:900,fontSize:isMobile?16:20,color:C.primary}},"StudyBuddy")),
+      e("div",{style:{display:"flex",gap:8,alignItems:"center"}},
+        e("button",{onClick:toggleDark,style:{background:"transparent",border:`1px solid ${bd}`,borderRadius:8,padding:"5px 9px",cursor:"pointer",fontSize:14}},dark?"☀️":"🌙"),
+        e("button",{onClick:()=>setPage("auth"),style:{background:"transparent",color:C.primary,border:`1.5px solid ${C.primary}`,borderRadius:8,padding:"7px 14px",cursor:"pointer",fontSize:13,fontWeight:700}},"Login"),
+        e("button",{onClick:()=>setPage("auth"),style:{background:C.primary,color:"#fff",border:"none",borderRadius:8,padding:"7px 14px",cursor:"pointer",fontSize:13,fontWeight:700}},"Start Free →")
+      )
+    ),
+    e("div",{style:{textAlign:"center",padding:isMobile?"48px 20px 40px":"80px 48px 56px"}},
+      e("div",{style:{display:"inline-block",background:C.pLight,color:C.primary,borderRadius:20,padding:"6px 16px",fontSize:12,fontWeight:700,marginBottom:16}},"🚀 AI-Powered Study Planner"),
+      e("h1",{style:{fontSize:isMobile?28:48,fontWeight:900,color:tx,margin:"0 0 14px",lineHeight:1.15}},"Your Smart Study Partner",e("br",null),e("span",{style:{color:C.primary}},"Right in Your Browser")),
+      e("p",{style:{fontSize:isMobile?14:17,color:mu,maxWidth:520,margin:"0 auto 28px",lineHeight:1.7}},"Plan goals, manage tasks, use AI chat, generate study plans — works on any device."),
+      e("div",{style:{display:"flex",gap:12,justifyContent:"center",flexWrap:"wrap"}},
+        e("button",{onClick:()=>setPage("auth"),style:{background:C.primary,color:"#fff",border:"none",borderRadius:10,padding:"13px 30px",fontSize:isMobile?14:16,fontWeight:700,cursor:"pointer"}},"Start Free →"),
+        e("button",{onClick:()=>setPage("auth"),style:{background:"transparent",color:C.primary,border:`1.5px solid ${C.primary}`,borderRadius:10,padding:"13px 30px",fontSize:isMobile?14:16,fontWeight:700,cursor:"pointer"}},"Try AI Chat 🤖")
+      )
+    ),
+    e("div",{style:{padding:isMobile?"0 16px 56px":"0 48px 72px",maxWidth:1080,margin:"0 auto"}},
+      e("div",{style:{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(3,1fr)",gap:14}},
+        ...features.map(f=>e("div",{key:f.t,style:{background:cardBg,border:`1px solid ${bd}`,borderRadius:12,padding:isMobile?16:20}},
+          e("div",{style:{fontSize:26,marginBottom:8}},f.icon),
+          e("h3",{style:{fontWeight:700,fontSize:isMobile?13:14,color:tx,margin:"0 0 5px"}},f.t),
+          e("p",{style:{color:mu,fontSize:12,lineHeight:1.5,margin:0}},f.d)
+        ))
+      )
+    ),
+    e("div",{style:{background:C.pLight,padding:isMobile?"40px 20px":"52px 48px",textAlign:"center"}},
+      e("h2",{style:{fontSize:isMobile?22:30,fontWeight:900,color:C.primary,margin:"0 0 12px"}},"Ready to Study Smarter?"),
+      e("button",{onClick:()=>setPage("auth"),style:{background:C.primary,color:"#fff",border:"none",borderRadius:10,padding:"13px 32px",fontSize:isMobile?14:16,fontWeight:700,cursor:"pointer"}},"Create Free Account →")
+    ),
+    e("footer",{style:{textAlign:"center",padding:"18px 16px",color:mu,fontSize:12,borderTop:`1px solid ${bd}`}},"© 2026 StudyBuddy · Created by ",e("strong",{style:{color:tx}},"Divyanshu Pandya")," and ",e("strong",{style:{color:tx}},"Bhavin Rathod")," for Hackathon")
+  );
+}
+
+function Auth({setPage,onLogin,dark}){
+  const{isMobile}=useW();
+  const D=dark,bg=D?C.dbg:C.bg,cardBg=D?C.dcard:C.card,tx=D?"#F1F5F9":C.text,mu=D?C.dmuted:C.muted,bd=D?C.dborder:C.border;
+  const[tab,setTab]=useState("login");
+  const[f,setF]=useState({name:"",email:"",password:"",confirm:"",country:"",college:""});
+  const[err,setErr]=useState("");const[ok,setOk]=useState("");const[loading,setLoading]=useState(false);
+  const inp={background:D?"#1e293b":"#F8FAFC",border:`1px solid ${bd}`,borderRadius:8,padding:"9px 12px",fontSize:14,color:tx,width:"100%",boxSizing:"border-box",outline:"none"};
+  const countries=["India","United States","United Kingdom","Canada","Australia","Germany","France","Japan","China","Brazil","Other"];
+  const handle=async()=>{
+    setErr("");setOk("");
+    if(!f.email||!f.password){setErr("Please fill all required fields.");return;}
+    setLoading(true);await new Promise(r=>setTimeout(r,400));
+    const users=store.getUsers();
+    if(tab==="signup"){
+      if(!f.name.trim()){setErr("Name is required.");setLoading(false);return;}
+      if(f.password.length<6){setErr("Password must be 6+ characters.");setLoading(false);return;}
+      if(f.password!==f.confirm){setErr("Passwords do not match.");setLoading(false);return;}
+      if(users[f.email]){setErr("Email already registered.");setLoading(false);return;}
+      const av=f.name.split(" ").map(n=>n[0]).join("").toUpperCase().slice(0,2);
+      const ud={name:f.name,email:f.email,password:f.password,avatar:av,country:f.country,college:f.college,joinedAt:new Date().toISOString()};
+      store.saveUser(f.email,ud);
+      store.set(f.email,"subjects",[]);store.set(f.email,"sessions",[]);
+      store.set(f.email,"stats",{streak:0,points:0,totalSessions:0,totalMinutes:0,pomodoroCount:0,lastDate:""});
+      store.set(f.email,"dailyGoal",120);store.set(f.email,"goals",[]);
+      store.set(f.email,"notifs",[{id:Date.now(),message:`Welcome ${f.name}! 🎓 Start by adding subjects and goals.`,read:false,time:"Just now"}]);
+      setOk("Account created! Redirecting...");
+      setTimeout(()=>onLogin({name:f.name,email:f.email,avatar:av,country:f.country,college:f.college,joinedAt:ud.joinedAt}),700);
+    } else {
+      if(f.email==="demo@study.com"&&f.password==="demo123"){
+        const demoName="Demo User",av="DU";
+        if(!users[f.email]){
+          store.saveUser(f.email,{name:demoName,email:f.email,password:"demo123",avatar:av,country:"India",college:"Demo College",joinedAt:new Date().toISOString()});
+          store.set(f.email,"subjects",[{id:1,name:"Mathematics",priority:"high",dailyGoal:60,color:SCOLS[0],studied:120,tasks:[{id:11,title:"Solve algebra problems",duration:"30 min",done:true,doneAt:"10:00 AM"},{id:12,title:"Practice calculus",duration:"45 min",done:false,doneAt:null}]},{id:2,name:"Physics",priority:"medium",dailyGoal:45,color:SCOLS[1],studied:90,tasks:[]},{id:3,name:"Computer Science",priority:"high",dailyGoal:90,color:SCOLS[2],studied:200,tasks:[{id:31,title:"Learn React hooks",duration:"1 hr",done:true,doneAt:"2:00 PM"}]}]);
+          store.set(f.email,"sessions",[{id:101,subject:"Mathematics",minutes:60,date:today(),type:"focus"},{id:102,subject:"Computer Science",minutes:90,date:today(),type:"pomodoro"}]);
+          store.set(f.email,"stats",{streak:5,points:450,totalSessions:12,totalMinutes:720,pomodoroCount:8,lastDate:today()});
+          store.set(f.email,"dailyGoal",120);
+          store.set(f.email,"goals",[{id:201,title:"Complete React Course",description:"Finish all 30 modules",deadline:"2026-04-30",subject:"Computer Science",targetHours:20,tasks:[{id:2011,title:"Learn useState & useEffect",duration:"2 hrs",done:true,doneAt:"9:00 AM"},{id:2012,title:"Build a to-do app",duration:"3 hrs",done:false,doneAt:null},{id:2013,title:"Learn React Router",duration:"1 hr",done:false,doneAt:null}],completed:false,createdAt:today()},{id:202,title:"Ace Math Exam",description:"Score 90%+",deadline:"2026-04-15",subject:"Mathematics",targetHours:10,tasks:[{id:2021,title:"Revise algebra",duration:"1 hr",done:true,doneAt:"11:00 AM"},{id:2022,title:"Practice past papers",duration:"2 hrs",done:false,doneAt:null}],completed:false,createdAt:today()}]);
+          store.set(f.email,"notifs",[{id:1,message:"Welcome to StudyBuddy Demo! 🎓",read:false,time:"Just now"}]);
+        }
+        setOk("Welcome to the Demo! 👋");
+        setTimeout(()=>onLogin({name:demoName,email:f.email,avatar:av,country:"India",college:"Demo College",joinedAt:new Date().toISOString()}),700);
+        setLoading(false);return;
+      }
+      const u=users[f.email];
+      if(!u||u.password!==f.password){setErr("Invalid email or password.");setLoading(false);return;}
+      setOk(`Welcome back, ${u.name}! 👋`);
+      setTimeout(()=>onLogin({name:u.name,email:f.email,avatar:u.avatar,country:u.country,college:u.college,joinedAt:u.joinedAt}),700);
+    }
+    setLoading(false);
+  };
+  const e=React.createElement;
+  return e("div",{style:{minHeight:"100vh",background:bg,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"system-ui,sans-serif",padding:16}},
+    e("div",{style:{width:"100%",maxWidth:420,background:cardBg,border:`1px solid ${bd}`,borderRadius:16,padding:isMobile?24:34}},
+      e("div",{style:{textAlign:"center",marginBottom:20}},e("span",{style:{fontSize:34}},"📚"),e("h1",{style:{fontWeight:900,fontSize:22,color:tx,margin:"6px 0 3px"}},"StudyBuddy"),e("p",{style:{color:mu,fontSize:13}},tab==="login"?"Welcome back!":"Create your free account.")),
+      e("div",{style:{display:"flex",background:D?"#334155":"#F1F5F9",borderRadius:9,padding:3,marginBottom:18}},
+        ...["login","signup"].map(t=>e("button",{key:t,onClick:()=>{setTab(t);setErr("");setOk("");},style:{flex:1,padding:"8px",borderRadius:7,border:"none",background:tab===t?cardBg:"transparent",color:tab===t?C.primary:mu,cursor:"pointer",fontSize:13,fontWeight:tab===t?700:400}},t==="login"?"🔑 Login":"✨ Sign Up"))
+      ),
+      e("div",{style:{display:"flex",flexDirection:"column",gap:11}},
+        tab==="signup"&&e("div",null,e("label",{style:{fontSize:11,fontWeight:600,color:mu,display:"block",marginBottom:4}},"Full Name *"),e("input",{value:f.name,onChange:ev=>setF(p=>({...p,name:ev.target.value})),placeholder:"Alex Johnson",style:inp})),
+        e("div",null,e("label",{style:{fontSize:11,fontWeight:600,color:mu,display:"block",marginBottom:4}},"Email *"),e("input",{type:"email",value:f.email,onChange:ev=>setF(p=>({...p,email:ev.target.value})),placeholder:"you@example.com",style:inp})),
+        e("div",null,e("label",{style:{fontSize:11,fontWeight:600,color:mu,display:"block",marginBottom:4}},"Password *"),e("input",{type:"password",value:f.password,onChange:ev=>setF(p=>({...p,password:ev.target.value})),placeholder:tab==="signup"?"Min 6 chars":"••••••••",style:inp,onKeyDown:ev=>ev.key==="Enter"&&handle()})),
+        tab==="signup"&&e(React.Fragment,null,
+          e("div",null,e("label",{style:{fontSize:11,fontWeight:600,color:mu,display:"block",marginBottom:4}},"Confirm Password *"),e("input",{type:"password",value:f.confirm,onChange:ev=>setF(p=>({...p,confirm:ev.target.value})),placeholder:"Repeat password",style:inp})),
+          e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:9}},
+            e("div",null,e("label",{style:{fontSize:11,fontWeight:600,color:mu,display:"block",marginBottom:4}},"Country"),e("select",{value:f.country,onChange:ev=>setF(p=>({...p,country:ev.target.value})),style:inp},e("option",{value:""},"Select"),...countries.map(c=>e("option",{key:c},c)))),
+            e("div",null,e("label",{style:{fontSize:11,fontWeight:600,color:mu,display:"block",marginBottom:4}},"College/School"),e("input",{value:f.college,onChange:ev=>setF(p=>({...p,college:ev.target.value})),placeholder:"Institution",style:inp}))
+          )
+        )
+      ),
+      err&&e("div",{style:{background:C.dLight,color:C.danger,borderRadius:7,padding:"8px 12px",fontSize:12,marginTop:11,fontWeight:500}},"⚠️ "+err),
+      ok&&e("div",{style:{background:C.sLight,color:C.secondary,borderRadius:7,padding:"8px 12px",fontSize:12,marginTop:11,fontWeight:600}},"✅ "+ok),
+      e("button",{onClick:handle,disabled:loading,style:{background:tab==="login"?C.primary:C.secondary,color:"#fff",border:"none",borderRadius:9,padding:"12px",fontSize:14,fontWeight:700,width:"100%",cursor:"pointer",marginTop:14,opacity:loading?.7:1}},loading?"Processing...":(tab==="login"?"Login →":"Create Account →")),
+      e("div",{style:{marginTop:12,background:D?"#334155":"#F8FAFC",borderRadius:8,padding:"9px 12px",fontSize:11,color:mu,textAlign:"center"}},e("strong",{style:{color:tx}},"Demo:")," demo@study.com / demo123"),
+      e("div",{style:{textAlign:"center",marginTop:12}},e("button",{onClick:()=>setPage("landing"),style:{background:"none",border:"none",color:mu,fontSize:12,cursor:"pointer"}},"← Back to Home"))
+    )
+  );
+}
+
+function Main({user,setUser,dark,toggleDark,logout}){
+  const{isMobile,isTablet}=useW();
+  const E=user.email,D=dark;
+  const bg=D?C.dbg:C.bg,cardBg=D?C.dcard:C.card,tx=D?"#F1F5F9":C.text,mu=D?C.dmuted:C.muted,bd=D?C.dborder:C.border;
+  const[page,setPage]=useState("dashboard");
+  const[navOpen,setNavOpen]=useState(false);
+  const[subjects,_ss]=useState(()=>store.get(E,"subjects",[]));
+  const[sessions,_se]=useState(()=>store.get(E,"sessions",[]));
+  const[stats,_st]=useState(()=>store.get(E,"stats",{streak:0,points:0,totalSessions:0,totalMinutes:0,pomodoroCount:0,lastDate:""}));
+  const[dailyGoal,_dg]=useState(()=>store.get(E,"dailyGoal",120));
+  const[goals,_go]=useState(()=>store.get(E,"goals",[]));
+  const[notifs,_no]=useState(()=>store.get(E,"notifs",[]));
+  const[chatMsgs,setChatMsgs]=useState([{role:"assistant",content:`Hi ${user.name}! 👋 I'm your AI study coach powered by Claude.\n\nI can help you with:\n• Answer any academic question\n• Create personalized study plans\n• Explain concepts in simple terms\n\nWhat would you like to learn today? 🎓`}]);
+  const[showNotif,setShowNotif]=useState(false);
+  const setSubjects=useCallback(v=>{const d=typeof v==="function"?v(subjects):v;store.set(E,"subjects",d);_ss(d);},[E,subjects]);
+  const setSessions=useCallback(v=>{const d=typeof v==="function"?v(sessions):v;store.set(E,"sessions",d);_se(d);},[E,sessions]);
+  const setStats=useCallback(v=>{const d=typeof v==="function"?v(stats):v;store.set(E,"stats",d);_st(d);},[E,stats]);
+  const setDailyGoal=useCallback(v=>{store.set(E,"dailyGoal",v);_dg(v);},[E]);
+  const setGoals=useCallback(v=>{const d=typeof v==="function"?v(goals):v;store.set(E,"goals",d);_go(d);},[E,goals]);
+  const setNotifs=useCallback(v=>{const d=typeof v==="function"?v(notifs):v;store.set(E,"notifs",d);_no(d);},[E,notifs]);
+  const updateUser=updates=>{const u=store.getUsers();if(u[E])store.saveUser(E,{...u[E],...updates});setUser(p=>({...p,...updates}));};
+  const unread=notifs.filter(n=>!n.read).length;
+  const todayMin=sessions.filter(s=>s.date===today()).reduce((a,s)=>a+s.minutes,0);
+  const earned=BADGES.filter(b=>b.fn(stats,subjects,goals));
+  const addNotif=useCallback(msg=>setNotifs(p=>[{id:Date.now(),message:msg,read:false,time:"Just now"},...p].slice(0,30)),[setNotifs]);
+  const addSession=useCallback((sub,mins,type="focus")=>{
+    setSessions(p=>[...p,{id:Date.now(),subject:sub,minutes:mins,date:today(),type}]);
+    const pts=mins*2+(type==="pomodoro"?10:0);
+    const yest=new Date(Date.now()-86400000).toISOString().split("T")[0];
+    setStats(p=>({...p,totalSessions:p.totalSessions+1,totalMinutes:p.totalMinutes+mins,pomodoroCount:type==="pomodoro"?p.pomodoroCount+1:p.pomodoroCount,points:p.points+pts,streak:p.lastDate===yest||p.lastDate===today()?p.streak+(p.lastDate!==today()?1:0):1,lastDate:today()}));
+    setSubjects(p=>p.map(s=>s.name===sub?{...s,studied:s.studied+mins}:s));
+    addNotif(`✅ ${mins}m of ${sub} logged! +${pts}XP`);
+  },[setSessions,setStats,setSubjects,addNotif,stats]);
+  const css={
+    card:{background:cardBg,border:`1px solid ${bd}`,borderRadius:12,padding:isMobile?14:18,marginBottom:14},
+    btn:(bg=C.primary,cl="#fff")=>({background:bg,color:cl,border:"none",borderRadius:8,padding:isMobile?"7px 13px":"8px 16px",cursor:"pointer",fontSize:13,fontWeight:700,display:"inline-flex",alignItems:"center",gap:5}),
+    out:{background:"transparent",color:C.primary,border:`1.5px solid ${C.primary}`,borderRadius:8,padding:isMobile?"7px 13px":"8px 16px",cursor:"pointer",fontSize:13,fontWeight:700},
+    inp:{background:D?"#1e293b":"#F8FAFC",border:`1px solid ${bd}`,borderRadius:8,padding:"8px 11px",fontSize:13,color:tx,outline:"none",boxSizing:"border-box"},
+  };
+  const NAV=[{id:"dashboard",icon:"📊",label:"Dashboard"},{id:"subjects",icon:"📚",label:"Subjects & Tasks"},{id:"goals",icon:"🎯",label:"Goals"},{id:"study",icon:"⏱",label:"Focus Timer"},{id:"analytics",icon:"📈",label:"Analytics"},{id:"chat",icon:"🤖",label:"AI Chat"},{id:"ideas",icon:"💡",label:"Idea Planner"},{id:"profile",icon:"👤",label:"Profile"}];
+  const sp={css,D,tx,mu,bd,cardBg,bg,subjects,setSubjects,sessions,setSessions,stats,setStats,dailyGoal,setDailyGoal,goals,setGoals,notifs,setNotifs,todayMin,earned,addSession,addNotif,chatMsgs,setChatMsgs,user,updateUser,dark,toggleDark,setPage,isMobile,isTablet};
+  const sidebarW=isMobile||isTablet?0:220;
+  const navPage=id=>{setPage(id);setNavOpen(false);};
+  const e=React.createElement;
+  return e("div",{style:{minHeight:"100vh",background:bg,color:tx,fontFamily:"system-ui,sans-serif"}},
+    navOpen&&(isMobile||isTablet)&&e("div",{onClick:()=>setNavOpen(false),style:{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",zIndex:150}}),
+    e("aside",{style:{width:220,background:cardBg,borderRight:`1px solid ${bd}`,height:"100vh",position:"fixed",top:0,left:0,display:"flex",flexDirection:"column",zIndex:200,overflowY:"auto",transform:(isMobile||isTablet)?(navOpen?"translateX(0)":"translateX(-100%)"):"translateX(0)",transition:"transform .25s ease"}},
+      e("div",{style:{padding:"14px 12px",borderBottom:`1px solid ${bd}`,display:"flex",alignItems:"center",justifyContent:"space-between"}},
+        e("div",{style:{display:"flex",alignItems:"center",gap:8}},e("div",{style:{width:30,height:30,borderRadius:7,background:C.primary,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}},"📚"),e("span",{style:{fontWeight:900,fontSize:15,color:C.primary}},"StudyBuddy")),
+        (isMobile||isTablet)&&e("button",{onClick:()=>setNavOpen(false),style:{background:"none",border:"none",cursor:"pointer",fontSize:20,color:mu}},"✕")
+      ),
+      e("nav",{style:{flex:1,padding:"8px 6px"}},
+        ...NAV.map(n=>e("button",{key:n.id,onClick:()=>navPage(n.id),style:{width:"100%",display:"flex",alignItems:"center",gap:8,padding:"9px 10px",borderRadius:8,border:"none",background:page===n.id?C.pLight:"transparent",color:page===n.id?C.primary:mu,cursor:"pointer",fontSize:13,fontWeight:page===n.id?700:400,marginBottom:1,textAlign:"left"}},
+          e("span",{style:{fontSize:15}},n.icon),e("span",null,n.label)
+        ))
+      ),
+      e("div",{style:{padding:"10px 12px",borderTop:`1px solid ${bd}`}},
+        e("div",{style:{display:"flex",alignItems:"center",gap:7}},
+          e("div",{style:{width:30,height:30,borderRadius:"50%",background:C.primary,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:900}},user.avatar),
+          e("div",{style:{minWidth:0,flex:1}},
+            e("div",{style:{fontSize:12,fontWeight:700,color:tx,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},user.name),
+            e("div",{style:{fontSize:10,color:C.accent}},"🔥"+stats.streak+"d · ⭐"+stats.points+"pts")
+          )
+        )
+      ),
+      e("footer",{style:{padding:"10px 12px",borderTop:`1px solid ${bd}`,fontSize:9,color:mu,textAlign:"center",lineHeight:1.5}},"© 2026 StudyBuddy")
+    ),
+    e("div",{style:{marginLeft:sidebarW,minHeight:"100vh",display:"flex",flexDirection:"column"}},
+      e("header",{style:{background:cardBg,borderBottom:`1px solid ${bd}`,padding:isMobile?"10px 14px":"11px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:100}},
+        e("div",{style:{display:"flex",alignItems:"center",gap:10}},
+          (isMobile||isTablet)&&e("button",{onClick:()=>setNavOpen(true),style:{background:"transparent",border:`1px solid ${bd}`,borderRadius:7,padding:"6px 9px",cursor:"pointer",fontSize:16,color:tx}},"☰"),
+          e("div",{style:{fontSize:isMobile?14:16,fontWeight:800,color:tx}},NAV.find(n=>n.id===page)?.label)
+        ),
+        e("div",{style:{display:"flex",alignItems:"center",gap:8}},
+          !isMobile&&e("div",{style:{background:C.aLight,color:C.accent,borderRadius:20,padding:"3px 11px",fontSize:12,fontWeight:700}},"⭐"+stats.points),
+          e("div",{style:{position:"relative"}},
+            e("button",{onClick:()=>setShowNotif(!showNotif),style:{background:"transparent",border:"none",cursor:"pointer",fontSize:18,position:"relative",padding:3}},
+              "🔔",unread>0&&e("span",{style:{position:"absolute",top:0,right:0,background:C.danger,color:"#fff",borderRadius:"50%",width:14,height:14,fontSize:9,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800}},unread)
+            ),
+            showNotif&&e("div",{style:{position:"absolute",right:0,top:"110%",width:280,background:cardBg,border:`1px solid ${bd}`,borderRadius:12,boxShadow:"0 12px 40px rgba(0,0,0,.15)",zIndex:300,overflow:"hidden"}},
+              e("div",{style:{padding:"10px 14px",borderBottom:`1px solid ${bd}`,display:"flex",justifyContent:"space-between",alignItems:"center"}},
+                e("span",{style:{fontWeight:700,fontSize:13,color:tx}},"Notifications"),
+                e("button",{onClick:()=>{setNotifs(p=>p.map(n=>({...n,read:true})));setShowNotif(false);},style:{fontSize:11,color:C.primary,background:"none",border:"none",cursor:"pointer",fontWeight:700}},"Mark all read")
+              ),
+              e("div",{style:{maxHeight:220,overflowY:"auto"}},
+                ...notifs.slice(0,6).map(n=>e("div",{key:n.id,onClick:()=>setNotifs(p=>p.map(x=>x.id===n.id?{...x,read:true}:x)),style:{padding:"9px 14px",borderBottom:`1px solid ${bd}`,cursor:"pointer",background:n.read?"transparent":D?"#1e3a5f30":C.pLight,display:"flex",gap:8}},
+                  e("div",{style:{width:7,height:7,borderRadius:"50%",background:n.read?"transparent":C.primary,marginTop:4,flexShrink:0}}),
+                  e("div",null,e("div",{style:{fontSize:12,color:tx,lineHeight:1.5}},n.message),e("div",{style:{fontSize:10,color:mu,marginTop:1}},n.time))
+                )),
+                notifs.length===0&&e("div",{style:{padding:16,textAlign:"center",color:mu,fontSize:12}},"No notifications")
+              )
+            )
+          ),
+          e("button",{onClick:toggleDark,style:{background:"transparent",border:`1px solid ${bd}`,borderRadius:7,padding:"5px 8px",cursor:"pointer",fontSize:14}},dark?"☀️":"🌙"),
+          !isMobile&&e("button",{onClick:logout,style:{background:"transparent",border:`1px solid ${bd}`,borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:11,color:mu}},"Sign out")
+        )
+      ),
+      e("main",{style:{padding:isMobile?12:20,flex:1},onClick:()=>showNotif&&setShowNotif(false)},
+        page==="dashboard"&&e(Dashboard,sp),
+        page==="subjects"&&e(SubjectsPage,sp),
+        page==="goals"&&e(GoalsPage,sp),
+        page==="study"&&e(Study,sp),
+        page==="analytics"&&e(Analytics,sp),
+        page==="chat"&&e(AIChat,sp),
+        page==="ideas"&&e(IdeaPlanner,sp),
+        page==="profile"&&e(Profile,sp)
+      ),
+      isMobile&&e("nav",{style:{position:"fixed",bottom:0,left:0,right:0,background:cardBg,borderTop:`1px solid ${bd}`,display:"flex",zIndex:100}},
+        ...NAV.slice(0,5).map(n=>e("button",{key:n.id,onClick:()=>setPage(n.id),style:{flex:1,display:"flex",flexDirection:"column",alignItems:"center",padding:"8px 2px",border:"none",background:"transparent",cursor:"pointer",color:page===n.id?C.primary:mu,fontSize:9,fontWeight:page===n.id?700:400,gap:2}},e("span",{style:{fontSize:18}},n.icon),e("span",null,n.label.split(" ")[0]))),
+        e("button",{onClick:()=>setNavOpen(true),style:{flex:1,display:"flex",flexDirection:"column",alignItems:"center",padding:"8px 2px",border:"none",background:"transparent",cursor:"pointer",color:mu,fontSize:9,gap:2}},e("span",{style:{fontSize:18}},"⋯"),e("span",null,"More"))
+      ),
+      isMobile&&e("div",{style:{height:60}})
+    )
+  );
+}
+
+function Dashboard({css,D,tx,mu,bd,subjects,sessions,stats,dailyGoal,goals,todayMin,earned,setPage,user,isMobile}){
+  const prog=pct(todayMin,dailyGoal);
+  const activeGoals=goals.filter(g=>!g.completed);
+  const recentSess=[...sessions].sort((a,b)=>b.id-a.id).slice(0,4);
+  const allTasks=goals.flatMap(g=>(g.tasks||[]).map(t=>({...t,goalTitle:g.title})));
+  const pendingTasks=allTasks.filter(t=>!t.done).slice(0,4);
+  const e=React.createElement;
+  return e("div",null,
+    e("div",{style:{background:`linear-gradient(135deg,${C.primary},${C.pDark})`,borderRadius:14,padding:isMobile?16:22,marginBottom:16,color:"#fff"}},
+      e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12}},
+        e("div",{style:{flex:1}},
+          e("h2",{style:{margin:"0 0 4px",fontWeight:800,fontSize:isMobile?18:22}},"Hey, "+user.name.split(" ")[0]+"! 👋"),
+          e("p",{style:{margin:"0 0 12px",opacity:.85,fontSize:12}},QUOTES[new Date().getDay()%QUOTES.length]),
+          e("div",{style:{display:"flex",gap:7,flexWrap:"wrap"}},
+            ...([["🔥",`${stats.streak}d`],["⭐",`${stats.points}pts`],["⏱",`${todayMin}/${dailyGoal}m`],["🎯",`${activeGoals.length}`]].map(([ic,lb])=>e("span",{key:lb,style:{background:"rgba(255,255,255,.2)",borderRadius:20,padding:"3px 10px",fontSize:11,fontWeight:600}},ic+" "+lb)))
+          )
+        ),
+        e("div",{style:{textAlign:"right",flexShrink:0}},e("div",{style:{fontSize:isMobile?28:38,fontWeight:900}},prog+"%"),e("div",{style:{fontSize:11,opacity:.8}},"Daily goal"))
+      ),
+      e("div",{style:{marginTop:12,background:"rgba(255,255,255,.2)",borderRadius:99,height:7}},e("div",{style:{background:"#fff",width:`${prog}%`,height:"100%",borderRadius:99,transition:"width .6s"}}))
+    ),
+    e("div",{style:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:14}},
+      ...([["📚",subjects.length,"Subjects",C.primary],["🎯",goals.length,"Goals",C.purple],["⏱",stats.totalSessions,"Sessions",C.secondary],["🏆",earned.length,"Badges",C.accent]].map(([ic,val,lb,cl])=>
+        e("div",{key:lb,style:{...css.card,margin:0,textAlign:"center",padding:isMobile?10:14,borderTop:`3px solid ${cl}`}},e("div",{style:{fontSize:isMobile?18:22}},ic),e("div",{style:{fontSize:isMobile?18:22,fontWeight:800,color:cl,marginTop:3}},val),e("div",{style:{fontSize:10,color:mu}},lb))
+      ))
+    ),
+    e("div",{style:{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:12,marginBottom:12}},
+      e("div",{style:css.card},
+        e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}},e("h3",{style:{margin:0,fontWeight:700,fontSize:13,color:tx}},"📚 Subjects Today"),e("button",{onClick:()=>setPage("subjects"),style:{...css.btn(),padding:"3px 9px",fontSize:11}},"Manage")),
+        subjects.length===0?e("div",{style:{textAlign:"center",padding:"14px 0",color:mu,fontSize:12}},"No subjects yet."):
+        subjects.slice(0,4).map(s=>{const dm=sessions.filter(ss=>ss.subject===s.name&&ss.date===today()).reduce((a,ss)=>a+ss.minutes,0);return e("div",{key:s.id,style:{marginBottom:9}},
+          e("div",{style:{display:"flex",justifyContent:"space-between",marginBottom:3}},e("span",{style:{fontSize:12,fontWeight:600,color:tx,display:"flex",alignItems:"center",gap:5}},e("span",{style:{width:7,height:7,borderRadius:"50%",background:s.color,display:"inline-block"}}),s.name),e("span",{style:{fontSize:10,color:mu}},dm+"/"+s.dailyGoal+"m")),
+          e("div",{style:{background:D?"#334155":"#F1F5F9",borderRadius:99,height:5}},e("div",{style:{background:s.color,width:`${pct(dm,s.dailyGoal)}%`,height:"100%",borderRadius:99,transition:"width .5s"}}))
+        );})
+      ),
+      e("div",{style:css.card},
+        e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}},e("h3",{style:{margin:0,fontWeight:700,fontSize:13,color:tx}},"🎯 Active Goals"),e("button",{onClick:()=>setPage("goals"),style:{...css.btn(C.purple),padding:"3px 9px",fontSize:11}},"Manage")),
+        activeGoals.length===0?e("div",{style:{textAlign:"center",padding:"14px 0",color:mu,fontSize:12}},"No active goals."):
+        activeGoals.slice(0,3).map(g=>{const done=(g.tasks||[]).filter(t=>t.done).length,total=(g.tasks||[]).length;return e("div",{key:g.id,style:{marginBottom:9}},
+          e("div",{style:{display:"flex",justifyContent:"space-between",marginBottom:3}},e("span",{style:{fontSize:12,fontWeight:600,color:tx,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1}},g.title),e("span",{style:{fontSize:10,color:mu,flexShrink:0,marginLeft:6}},done+"/"+total)),
+          e("div",{style:{background:D?"#334155":"#F1F5F9",borderRadius:99,height:5}},e("div",{style:{background:C.purple,width:`${total>0?pct(done,total):0}%`,height:"100%",borderRadius:99}}))
+        );})
+      )
+    ),
+    e("div",{style:{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:12}},
+      e("div",{style:css.card},
+        e("h3",{style:{margin:"0 0 11px",fontWeight:700,fontSize:13,color:tx}},"✅ Pending Tasks"),
+        pendingTasks.length===0?e("p",{style:{color:mu,fontSize:12,textAlign:"center",padding:"10px 0"}},"All tasks done! 🎉"):
+        pendingTasks.map(t=>e("div",{key:t.id,style:{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:`1px solid ${bd}`}},
+          e("div",{style:{width:14,height:14,borderRadius:4,border:`2px solid ${C.primary}`,flexShrink:0}}),
+          e("div",{style:{flex:1,minWidth:0}},e("div",{style:{fontSize:12,color:tx,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},t.title),e("div",{style:{fontSize:10,color:mu}},t.goalTitle+(t.duration?" · "+t.duration:"")))
+        )),
+        pendingTasks.length>0&&e("button",{onClick:()=>setPage("goals"),style:{...css.btn(),width:"100%",justifyContent:"center",marginTop:9,padding:"7px",fontSize:11}},"View All →")
+      ),
+      e("div",{style:css.card},
+        e("h3",{style:{margin:"0 0 11px",fontWeight:700,fontSize:13,color:tx}},"📋 Recent Sessions"),
+        recentSess.length===0?e("div",{style:{textAlign:"center",padding:"14px 0",color:mu,fontSize:12}},"No sessions yet."):
+        recentSess.map(s=>e("div",{key:s.id,style:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",borderBottom:`1px solid ${bd}`}},
+          e("div",null,e("div",{style:{fontSize:12,fontWeight:600,color:tx}},s.subject),e("div",{style:{fontSize:10,color:mu}},s.date)),
+          e("span",{style:{background:C.pLight,color:C.primary,borderRadius:20,padding:"2px 8px",fontSize:11,fontWeight:700}},s.minutes+"m")
+        )),
+        e("button",{onClick:()=>setPage("study"),style:{...css.btn(),width:"100%",justifyContent:"center",marginTop:9,padding:"7px",fontSize:11}},"Start Session ⏱")
+      )
+    )
+  );
+}
+
+function SubjectsPage({css,D,tx,mu,bd,subjects,setSubjects,sessions,addNotif,isMobile}){
+  const[form,setForm]=useState({name:"",priority:"medium",dailyGoal:30});
+  const[expanded,setExpanded]=useState({});
+  const[taskForms,setTaskForms]=useState({});
+  const pc={high:C.danger,medium:C.accent,low:C.secondary};
+  const addSubject=()=>{if(!form.name.trim())return;const s={id:Date.now(),...form,color:SCOLS[subjects.length%SCOLS.length],studied:0,tasks:[]};setSubjects(p=>[...p,s]);addNotif("📚 Added: "+form.name);setForm({name:"",priority:"medium",dailyGoal:30});};
+  const delSubject=(id,name)=>{setSubjects(p=>p.filter(s=>s.id!==id));addNotif("🗑 Removed: "+name);};
+  const updSubject=(id,k,v)=>setSubjects(p=>p.map(s=>s.id===id?{...s,[k]:v}:s));
+  const addTask=sid=>{const tf=taskForms[sid]||{};if(!tf.title?.trim())return;setSubjects(p=>p.map(s=>s.id===sid?{...s,tasks:[...(s.tasks||[]),{id:Date.now(),title:tf.title,duration:tf.duration||"",done:false,doneAt:null}]}:s));setTaskForms(p=>({...p,[sid]:{title:"",duration:""}}));};
+  const toggleTask=(sid,tid)=>setSubjects(p=>p.map(s=>s.id===sid?{...s,tasks:(s.tasks||[]).map(t=>t.id===tid?{...t,done:!t.done,doneAt:!t.done?new Date().toLocaleTimeString():null}:t)}:s));
+  const delTask=(sid,tid)=>setSubjects(p=>p.map(s=>s.id===sid?{...s,tasks:(s.tasks||[]).filter(t=>t.id!==tid)}:s));
+  const e=React.createElement;
+  return e("div",null,
+    e("div",{style:css.card},
+      e("h3",{style:{margin:"0 0 12px",fontWeight:700,fontSize:14,color:tx}},"➕ Add Subject"),
+      e("div",{style:{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"1fr 110px 85px auto",gap:9,alignItems:"end"}},
+        e("div",{style:{gridColumn:isMobile?"1/-1":"auto"}},e("label",{style:{fontSize:11,color:mu,display:"block",marginBottom:3}},"Subject Name *"),e("input",{value:form.name,onChange:ev=>setForm(p=>({...p,name:ev.target.value})),placeholder:"e.g. Mathematics, Python…",style:{...css.inp,width:"100%"},onKeyDown:ev=>ev.key==="Enter"&&addSubject()})),
+        e("div",null,e("label",{style:{fontSize:11,color:mu,display:"block",marginBottom:3}},"Priority"),e("select",{value:form.priority,onChange:ev=>setForm(p=>({...p,priority:ev.target.value})),style:{...css.inp,width:"100%"}},e("option",{value:"high"},"🔴 High"),e("option",{value:"medium"},"🟡 Medium"),e("option",{value:"low"},"🟢 Low"))),
+        e("div",null,e("label",{style:{fontSize:11,color:mu,display:"block",marginBottom:3}},"Goal (min)"),e("input",{type:"number",value:form.dailyGoal,onChange:ev=>setForm(p=>({...p,dailyGoal:+ev.target.value})),style:{...css.inp,width:"100%"},min:5})),
+        e("button",{onClick:addSubject,style:{...css.btn(),alignSelf:"flex-end",padding:"8px 16px"}},"Add →")
+      )
+    ),
+    subjects.length===0?e("div",{style:{...css.card,textAlign:"center",padding:40}},e("div",{style:{fontSize:40,marginBottom:10}},"📚"),e("h3",{style:{fontWeight:700,color:tx,margin:"0 0 6px"}},"No Subjects Yet"),e("p",{style:{color:mu,fontSize:13}},"Add your first subject above.")):
+    subjects.map(s=>{
+      const totalStudied=sessions.filter(ss=>ss.subject===s.name).reduce((a,ss)=>a+ss.minutes,0);
+      const doneTasks=(s.tasks||[]).filter(t=>t.done).length,totalTasks=(s.tasks||[]).length,exp=expanded[s.id],tf=taskForms[s.id]||{title:"",duration:""};
+      return e("div",{key:s.id,style:{...css.card,marginBottom:10}},
+        e("div",{style:{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}},
+          e("div",{style:{width:38,height:38,borderRadius:9,background:s.color+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,color:s.color,fontWeight:900,flexShrink:0}},s.name[0]),
+          e("div",{style:{flex:1,minWidth:100}},e("div",{style:{fontSize:14,fontWeight:700,color:tx}},s.name),e("div",{style:{fontSize:11,color:mu}},e("span",{style:{color:pc[s.priority]}},s.priority)," · "+s.dailyGoal+"m/day · "+totalStudied+"m total · "+doneTasks+"/"+totalTasks+" tasks")),
+          e("div",{style:{display:"flex",gap:6,flexShrink:0}},
+            e("button",{onClick:()=>setExpanded(p=>({...p,[s.id]:!exp})),style:{...css.btn(D?"#334155":"#F1F5F9",mu),padding:"5px 10px",fontSize:11}},exp?"▲":"▼ Tasks"),
+            e("button",{onClick:()=>delSubject(s.id,s.name),style:{...css.btn(C.dLight,C.danger),padding:"5px 9px",fontSize:11}},"🗑")
+          )
+        ),
+        exp&&e("div",{style:{marginTop:12,borderTop:`1px solid ${bd}`,paddingTop:12}},
+          e("div",{style:{display:"flex",gap:7,marginBottom:11,alignItems:"flex-end",flexWrap:isMobile?"wrap":"nowrap"}},
+            e("div",{style:{flex:2}},e("input",{value:tf.title,onChange:ev=>setTaskForms(p=>({...p,[s.id]:{...tf,title:ev.target.value}})),placeholder:"Task title…",style:{...css.inp,width:"100%"},onKeyDown:ev=>ev.key==="Enter"&&addTask(s.id)})),
+            e("div",{style:{flex:1}},e("input",{value:tf.duration,onChange:ev=>setTaskForms(p=>({...p,[s.id]:{...tf,duration:ev.target.value}})),placeholder:"30 min",style:{...css.inp,width:"100%"}})),
+            e("button",{onClick:()=>addTask(s.id),style:{...css.btn(),padding:"8px 14px"}},"+ Add")
+          ),
+          (s.tasks||[]).length===0?e("div",{style:{textAlign:"center",padding:"10px 0",color:mu,fontSize:12}},"No tasks yet."):
+          (s.tasks||[]).map(t=>e("div",{key:t.id,style:{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",borderRadius:8,marginBottom:5,background:t.done?(D?"#14532d20":C.sLight):(D?"#33415520":"#F8FAFC"),border:`1px solid ${t.done?C.secondary+"50":bd}`}},
+            e("button",{onClick:()=>toggleTask(s.id,t.id),style:{width:22,height:22,borderRadius:6,border:`2px solid ${t.done?C.secondary:bd}`,background:t.done?C.secondary:"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}},t.done&&e("span",{style:{color:"#fff",fontSize:13,fontWeight:900}},"✓")),
+            e("div",{style:{flex:1}},e("div",{style:{fontSize:13,fontWeight:600,color:t.done?C.secondary:tx,textDecoration:t.done?"line-through":"none"}},t.title),t.duration&&e("span",{style:{fontSize:10,color:mu}},"⏱ "+t.duration)),
+            e("button",{onClick:()=>delTask(s.id,t.id),style:{background:"transparent",border:"none",cursor:"pointer",color:mu,fontSize:15}},"×")
+          ))
+        )
+      );
+    })
+  );
+}
+
+function GoalsPage({css,D,tx,mu,bd,goals,setGoals,subjects,addNotif,isMobile}){
+  const[showForm,setShowForm]=useState(false);
+  const[form,setForm]=useState({title:"",description:"",deadline:"",subject:"",targetHours:""});
+  const[taskInputs,setTaskInputs]=useState({});
+  const addGoal=()=>{if(!form.title.trim())return;setGoals(p=>[...p,{id:Date.now(),...form,tasks:[],completed:false,createdAt:today()}]);addNotif("🎯 Goal: "+form.title);setForm({title:"",description:"",deadline:"",subject:"",targetHours:""});setShowForm(false);};
+  const delGoal=id=>setGoals(p=>p.filter(g=>g.id!==id));
+  const toggleGoalDone=id=>setGoals(p=>p.map(g=>g.id===id?{...g,completed:!g.completed}:g));
+  const addTask=gid=>{const ti=taskInputs[gid]||{};if(!ti.title?.trim())return;setGoals(p=>p.map(g=>g.id===gid?{...g,tasks:[...(g.tasks||[]),{id:Date.now(),title:ti.title,duration:ti.duration||"",done:false,doneAt:null}]}:g));setTaskInputs(p=>({...p,[gid]:{title:"",duration:""}}));};
+  const toggleTask=(gid,tid)=>setGoals(p=>p.map(g=>g.id===gid?{...g,tasks:(g.tasks||[]).map(t=>t.id===tid?{...t,done:!t.done,doneAt:!t.done?new Date().toLocaleTimeString():null}:t)}:g));
+  const delTask=(gid,tid)=>setGoals(p=>p.map(g=>g.id===gid?{...g,tasks:(g.tasks||[]).filter(t=>t.id!==tid)}:g));
+  const active=goals.filter(g=>!g.completed),done=goals.filter(g=>g.completed);
+  const e=React.createElement;
+  const GoalCard=({g})=>{
+    const dt=(g.tasks||[]).filter(t=>t.done).length,tt=(g.tasks||[]).length,gp=tt>0?pct(dt,tt):0;
+    const ti=taskInputs[g.id]||{title:"",duration:""},overdue=g.deadline&&g.deadline<today()&&!g.completed;
+    return e("div",{style:{...css.card,marginBottom:10,borderLeft:`4px solid ${g.completed?C.secondary:overdue?C.danger:C.purple}`}},
+      e("div",{style:{display:"flex",alignItems:"flex-start",gap:10,marginBottom:10,flexWrap:"wrap"}},
+        e("div",{style:{flex:1,minWidth:140}},
+          e("div",{style:{display:"flex",alignItems:"center",gap:7,flexWrap:"wrap"}},
+            e("h3",{style:{margin:0,fontWeight:700,fontSize:14,color:g.completed?C.secondary:tx,textDecoration:g.completed?"line-through":"none"}},g.title),
+            g.completed&&e("span",{style:{background:C.sLight,color:C.secondary,borderRadius:20,padding:"1px 8px",fontSize:10,fontWeight:700}},"✅ Done"),
+            overdue&&e("span",{style:{background:C.dLight,color:C.danger,borderRadius:20,padding:"1px 8px",fontSize:10,fontWeight:700}},"⚠️ Overdue")
+          ),
+          g.description&&e("p",{style:{margin:"4px 0 0",fontSize:12,color:mu}},g.description),
+          e("div",{style:{display:"flex",gap:10,marginTop:5,flexWrap:"wrap"}},
+            g.deadline&&e("span",{style:{fontSize:10,color:overdue?C.danger:mu}},"📅 "+g.deadline),
+            g.subject&&e("span",{style:{fontSize:10,color:mu}},"📚 "+g.subject)
+          )
+        ),
+        e("div",{style:{display:"flex",gap:6}},
+          e("button",{onClick:()=>toggleGoalDone(g.id),style:{...css.btn(g.completed?C.dLight:C.sLight,g.completed?C.danger:C.secondary),padding:"5px 10px",fontSize:11}},g.completed?"Reopen":"✓ Done"),
+          e("button",{onClick:()=>delGoal(g.id),style:{...css.btn(C.dLight,C.danger),padding:"5px 9px",fontSize:11}},"🗑")
+        )
+      ),
+      tt>0&&e("div",{style:{marginBottom:10}},
+        e("div",{style:{display:"flex",justifyContent:"space-between",marginBottom:3}},e("span",{style:{fontSize:11,color:mu}},dt+"/"+tt+" tasks · "+gp+"%"),e("span",{style:{fontSize:11,color:gp===100?C.secondary:C.purple,fontWeight:600}},gp===100?"🎉 All done!":"In progress")),
+        e("div",{style:{background:D?"#334155":"#F1F5F9",borderRadius:99,height:6}},e("div",{style:{background:gp===100?C.secondary:C.purple,width:`${gp}%`,height:"100%",borderRadius:99,transition:"width .5s"}}))
+      ),
+      !g.completed&&e("div",{style:{display:"flex",gap:7,marginBottom:9}},
+        e("div",{style:{flex:2}},e("input",{value:ti.title,onChange:ev=>setTaskInputs(p=>({...p,[g.id]:{...ti,title:ev.target.value}})),placeholder:"Add a task…",style:{...css.inp,width:"100%",padding:"7px 10px",fontSize:12},onKeyDown:ev=>ev.key==="Enter"&&addTask(g.id)})),
+        e("div",{style:{flex:1}},e("input",{value:ti.duration,onChange:ev=>setTaskInputs(p=>({...p,[g.id]:{...ti,duration:ev.target.value}})),placeholder:"30 min",style:{...css.inp,width:"100%",padding:"7px 10px",fontSize:12}})),
+        e("button",{onClick:()=>addTask(g.id),style:{...css.btn(),padding:"7px 13px",fontSize:12}},"+" )
+      ),
+      ...(g.tasks||[]).map(t=>e("div",{key:t.id,style:{display:"flex",alignItems:"center",gap:8,padding:"7px 9px",borderRadius:8,marginBottom:4,background:t.done?(D?"#14532d20":C.sLight):(D?"#33415520":"#F8FAFC"),border:`1px solid ${t.done?C.secondary+"50":bd}`}},
+        e("button",{onClick:()=>toggleTask(g.id,t.id),style:{width:20,height:20,borderRadius:5,border:`2px solid ${t.done?C.secondary:bd}`,background:t.done?C.secondary:"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}},t.done&&e("span",{style:{color:"#fff",fontSize:12,fontWeight:900}},"✓")),
+        e("div",{style:{flex:1}},e("span",{style:{fontSize:12,fontWeight:600,color:t.done?C.secondary:tx,textDecoration:t.done?"line-through":"none"}},t.title),t.duration&&e("div",{style:{fontSize:10,color:mu}},"⏱ "+t.duration)),
+        !g.completed&&e("button",{onClick:()=>delTask(g.id,t.id),style:{background:"transparent",border:"none",cursor:"pointer",color:mu,fontSize:14}},"×")
+      ))
+    );
+  };
+  return e("div",null,
+    e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}},
+      e("div",{style:{fontSize:13,color:mu}},active.length+" active · "+done.length+" completed"),
+      e("button",{onClick:()=>setShowForm(!showForm),style:{...css.btn(C.purple)}},"🎯 "+(showForm?"Cancel":"New Goal"))
+    ),
+    showForm&&e("div",{style:{...css.card,borderTop:`3px solid ${C.purple}`,marginBottom:14}},
+      e("h3",{style:{margin:"0 0 12px",fontWeight:700,fontSize:14,color:tx}},"🎯 Create New Goal"),
+      e("div",{style:{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10,marginBottom:10}},
+        e("div",{style:{gridColumn:"1/-1"}},e("label",{style:{fontSize:11,color:mu,display:"block",marginBottom:3}},"Goal Title *"),e("input",{value:form.title,onChange:ev=>setForm(p=>({...p,title:ev.target.value})),placeholder:"e.g. Complete Python course…",style:{...css.inp,width:"100%"}})),
+        e("div",{style:{gridColumn:"1/-1"}},e("label",{style:{fontSize:11,color:mu,display:"block",marginBottom:3}},"Description"),e("input",{value:form.description,onChange:ev=>setForm(p=>({...p,description:ev.target.value})),placeholder:"What do you want to achieve?",style:{...css.inp,width:"100%"}})),
+        e("div",null,e("label",{style:{fontSize:11,color:mu,display:"block",marginBottom:3}},"Deadline"),e("input",{type:"date",value:form.deadline,onChange:ev=>setForm(p=>({...p,deadline:ev.target.value})),style:{...css.inp,width:"100%"}})),
+        e("div",null,e("label",{style:{fontSize:11,color:mu,display:"block",marginBottom:3}},"Target Hours"),e("input",{type:"number",value:form.targetHours,onChange:ev=>setForm(p=>({...p,targetHours:ev.target.value})),placeholder:"e.g. 20",style:{...css.inp,width:"100%"},min:1})),
+        e("div",null,e("label",{style:{fontSize:11,color:mu,display:"block",marginBottom:3}},"Related Subject"),e("select",{value:form.subject,onChange:ev=>setForm(p=>({...p,subject:ev.target.value})),style:{...css.inp,width:"100%"}},e("option",{value:""},"None"),...subjects.map(s=>e("option",{key:s.id,value:s.name},s.name))))
+      ),
+      e("button",{onClick:addGoal,style:{...css.btn(C.purple)}},"Create Goal →")
+    ),
+    goals.length===0?e("div",{style:{...css.card,textAlign:"center",padding:40}},e("div",{style:{fontSize:40,marginBottom:10}},"🎯"),e("h3",{style:{fontWeight:700,color:tx,margin:"0 0 6px"}},"No Goals Yet"),e("p",{style:{color:mu,fontSize:13,marginBottom:14}},"Set your first goal to stay motivated."),e("button",{onClick:()=>setShowForm(true),style:{...css.btn(C.purple)}},"Create First Goal →")):
+    e(React.Fragment,null,
+      active.length>0&&e("div",null,e("div",{style:{fontWeight:700,fontSize:13,color:tx,marginBottom:9}},"🎯 Active ("+active.length+")"),...active.map(g=>e(GoalCard,{key:g.id,g}))),
+      done.length>0&&e("div",{style:{marginTop:14}},e("div",{style:{fontWeight:700,fontSize:13,color:C.secondary,marginBottom:9}},"✅ Completed ("+done.length+")"),...done.map(g=>e(GoalCard,{key:g.id,g})))
+    )
+  );
+}
+
+function Study({css,D,tx,mu,bd,cardBg,subjects,addSession,setPage,isMobile}){
+  const[sub,setSub]=useState(subjects[0]?.name||"");
+  const[mode,setMode]=useState("pomodoro");
+  const[tl,setTl]=useState(25*60);
+  const[run,setRun]=useState(false);
+  const[phase,setPhase]=useState("work");
+  const[cycles,setCycles]=useState(0);
+  const[cMin,setCMin]=useState(45);
+  const[focus,setFocus]=useState(false);
+  const ref=useRef(null);
+  const total=mode==="pomodoro"?(phase==="work"?25*60:5*60):cMin*60;
+  const pr=pct(total-tl,total);const pc=phase==="work"?C.primary:C.secondary;
+  const R=80,circ=2*Math.PI*R;
+  useEffect(()=>{if(subjects.length>0&&!sub)setSub(subjects[0].name);},[subjects]);
+  useEffect(()=>{if(run){ref.current=setInterval(()=>{setTl(t=>{if(t<=1){clearInterval(ref.current);setRun(false);if(mode==="pomodoro"){if(phase==="work"){addSession(sub,25,"pomodoro");setCycles(c=>c+1);setPhase("break");setTl(5*60);}else{setPhase("work");setTl(25*60);}}else addSession(sub,cMin,"focus");return 0;}return t-1;});},1000);}else clearInterval(ref.current);return()=>clearInterval(ref.current);},[run,mode,phase,sub,cMin]);
+  const reset=()=>{setRun(false);setTl(mode==="pomodoro"?25*60:cMin*60);setPhase("work");};
+  const e=React.createElement;
+  if(subjects.length===0)return e("div",{style:{...css.card,textAlign:"center",padding:40}},e("div",{style:{fontSize:40,marginBottom:10}},"📚"),e("h3",{style:{color:tx}},"No Subjects"),e("p",{style:{color:mu,fontSize:13,marginBottom:14}},"Add subjects first."),e("button",{onClick:()=>setPage("subjects"),style:css.btn()},"Add Subjects →"));
+  const TimerUI=e("div",{style:{textAlign:"center",padding:"16px 0"}},
+    e("svg",{width:200,height:200,style:{display:"block",margin:"0 auto 18px"}},
+      e("circle",{cx:100,cy:100,r:R,fill:"none",stroke:D?"#334155":"#E2E8F0",strokeWidth:10}),
+      e("circle",{cx:100,cy:100,r:R,fill:"none",stroke:pc,strokeWidth:10,strokeDasharray:circ,strokeDashoffset:circ*(1-pr/100),strokeLinecap:"round",style:{transform:"rotate(-90deg)",transformOrigin:"center",transition:"stroke-dashoffset .5s"}}),
+      e("text",{x:100,y:94,textAnchor:"middle",fontSize:32,fontWeight:900,fill:tx},fmt(tl)),
+      e("text",{x:100,y:116,textAnchor:"middle",fontSize:12,fill:mu},mode==="pomodoro"?(phase==="work"?"Focus Time":"Break Time"):"Focus Session"),
+      mode==="pomodoro"&&e("text",{x:100,y:132,textAnchor:"middle",fontSize:11,fill:mu},"🍅 Cycle "+(cycles+1))
+    ),
+    e("div",{style:{display:"flex",gap:10,justifyContent:"center"}},
+      e("button",{onClick:()=>setRun(!run),style:{...css.btn(run?C.accent:pc),padding:"11px 28px",fontSize:14,borderRadius:11}},run?"⏸ Pause":"▶ Start"),
+      e("button",{onClick:reset,style:{...css.out,padding:"11px 18px",fontSize:14,borderRadius:11}},"↺")
+    )
+  );
+  if(focus)return e("div",{style:{position:"fixed",inset:0,background:D?"#0F172A":"#F8FAFC",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",zIndex:999,padding:20}},e("h2",{style:{color:tx,margin:"0 0 6px"}},"🎯 "+sub),TimerUI,e("button",{onClick:()=>setFocus(false),style:{marginTop:20,...css.out}},"Exit Focus Mode"));
+  return e("div",{style:{display:"grid",gridTemplateColumns:isMobile?"1fr":"260px 1fr",gap:16}},
+    e("div",null,e("div",{style:css.card},
+      e("h3",{style:{margin:"0 0 12px",fontWeight:700,fontSize:14,color:tx}},"⚙️ Settings"),
+      e("div",{style:{display:"flex",background:D?"#334155":"#F1F5F9",borderRadius:8,padding:3,marginBottom:12}},
+        ...([["pomodoro","🍅 Pomodoro"],["focus","⏱ Custom"]].map(([v,l])=>e("button",{key:v,onClick:()=>{setMode(v);reset();setTl(v==="pomodoro"?25*60:cMin*60);},style:{flex:1,padding:"7px",border:"none",borderRadius:6,background:mode===v?cardBg:"transparent",color:mode===v?C.primary:mu,cursor:"pointer",fontSize:12,fontWeight:mode===v?700:400}},l)))
+      ),
+      mode==="focus"&&e("div",{style:{marginBottom:12}},e("label",{style:{fontSize:11,color:mu,display:"block",marginBottom:3}},"Duration: ",e("strong",{style:{color:C.primary}},cMin+" min")),e("input",{type:"range",min:5,max:180,step:5,value:cMin,onChange:ev=>{setCMin(+ev.target.value);if(!run)setTl(+ev.target.value*60);},style:{width:"100%"}})),
+      e("label",{style:{fontSize:11,fontWeight:600,color:mu,display:"block",marginBottom:5}},"Subject"),
+      e("select",{value:sub,onChange:ev=>setSub(ev.target.value),style:{...css.inp,width:"100%",marginBottom:12}},...subjects.map(s=>e("option",{key:s.id,value:s.name},s.name))),
+      e("button",{onClick:()=>setFocus(true),style:{...css.btn(C.accent),width:"100%",justifyContent:"center",padding:"9px"}},"🎯 Focus Mode")
+    )),
+    e("div",{style:{...css.card,display:"flex",alignItems:"center",justifyContent:"center",minHeight:380}},TimerUI)
+  );
+}
+
+function Analytics({css,D,tx,mu,bd,subjects,sessions,stats,dailyGoal,goals,isMobile}){
+  const subTotals=subjects.map(s=>({...s,total:sessions.filter(ss=>ss.subject===s.name).reduce((a,ss)=>a+ss.minutes,0)})).sort((a,b)=>b.total-a.total);
+  const maxT=Math.max(...subTotals.map(s=>s.total),1);
+  const last7=Array.from({length:7},(_,i)=>{const d=new Date(Date.now()-(6-i)*86400000).toISOString().split("T")[0];return{day:new Date(Date.now()-(6-i)*86400000).toLocaleDateString("en",{weekday:"short"}),minutes:sessions.filter(s=>s.date===d).reduce((a,s)=>a+s.minutes,0)};});
+  const maxD=Math.max(...last7.map(d=>d.minutes),dailyGoal,1);
+  const weekTotal=last7.reduce((a,d)=>a+d.minutes,0);
+  const doneTasks=goals.flatMap(g=>g.tasks||[]).filter(t=>t.done).length,totalTasks=goals.flatMap(g=>g.tasks||[]).length;
+  const e=React.createElement;
+  return e("div",null,
+    e("div",{style:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:16}},
+      ...([["⏱",`${(stats.totalMinutes/60).toFixed(1)}h`,"Study Time",C.primary],["🔥",`${stats.streak}d`,"Streak",C.accent],["🎯",`${goals.filter(g=>g.completed).length}/${goals.length}`,"Goals",C.purple],["✅",`${doneTasks}/${totalTasks}`,"Tasks",C.secondary]].map(([ic,v,l,cl])=>
+        e("div",{key:l,style:{...css.card,margin:0,textAlign:"center",padding:isMobile?10:14}},e("div",{style:{fontSize:isMobile?18:22}},ic),e("div",{style:{fontSize:isMobile?16:20,fontWeight:800,color:cl,marginTop:3}},v),e("div",{style:{fontSize:10,color:mu}},l))
+      ))
+    ),
+    e("div",{style:{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:14}},
+      e("div",{style:css.card},
+        e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}},e("h3",{style:{margin:0,fontWeight:700,fontSize:13,color:tx}},"📅 Last 7 Days"),e("span",{style:{fontSize:11,color:mu}},weekTotal+"m total")),
+        e("div",{style:{display:"flex",alignItems:"flex-end",gap:6,height:130}},
+          ...last7.map(d=>e("div",{key:d.day,style:{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3}},
+            e("span",{style:{fontSize:9,color:mu}},d.minutes?d.minutes+"m":""),
+            e("div",{style:{width:"100%",background:D?"#334155":"#F1F5F9",borderRadius:"4px 4px 0 0",height:100,display:"flex",flexDirection:"column",justifyContent:"flex-end"}},e("div",{style:{background:d.minutes>=dailyGoal?C.secondary:C.primary,height:`${pct(d.minutes,maxD)}%`,borderRadius:"4px 4px 0 0",minHeight:d.minutes>0?4:0,transition:"height .5s"}})),
+            e("span",{style:{fontSize:9,color:mu}},d.day)
+          ))
+        )
+      ),
+      e("div",{style:css.card},
+        e("h3",{style:{margin:"0 0 13px",fontWeight:700,fontSize:13,color:tx}},"📚 By Subject"),
+        subTotals.length===0?e("p",{style:{color:mu,fontSize:12}},"No study data yet."):
+        subTotals.map(s=>e("div",{key:s.id,style:{marginBottom:9}},
+          e("div",{style:{display:"flex",justifyContent:"space-between",marginBottom:3}},e("span",{style:{fontSize:12,color:tx,fontWeight:600,display:"flex",alignItems:"center",gap:4}},e("span",{style:{width:7,height:7,borderRadius:"50%",background:s.color,display:"inline-block"}}),s.name),e("span",{style:{fontSize:10,color:mu}},s.total+"m")),
+          e("div",{style:{background:D?"#334155":"#F1F5F9",borderRadius:99,height:7}},e("div",{style:{background:s.color,width:`${pct(s.total,maxT)}%`,height:"100%",borderRadius:99}}))
+        ))
+      )
+    )
+  );
+}
+
+function AIChat({css,D,tx,mu,bd,subjects,stats,dailyGoal,goals,user,chatMsgs,setChatMsgs,isMobile}){
+  const[inp,setInp]=useState("");
+  const[loading,setLoading]=useState(false);
+  const endRef=useRef(null);
+  useEffect(()=>endRef.current?.scrollIntoView({behavior:"smooth"}),[chatMsgs,loading]);
+  const QUICK=["Explain photosynthesis","What is machine learning?","How to solve quadratic equations?","Tips to study effectively","Create a study plan for me","Explain Newton's laws"];
+  const sendMessage=async msgText=>{
+    const text=(msgText||inp).trim();if(!text||loading)return;setInp("");
+    const newUserMsg={role:"user",content:text};const updatedMsgs=[...chatMsgs,newUserMsg];setChatMsgs(updatedMsgs);setLoading(true);
+    const subjectInfo=subjects.length>0?subjects.map(s=>s.name+"("+s.dailyGoal+"min/day)").join(", "):"no subjects";
+    const goalInfo=goals.filter(g=>!g.completed).length>0?goals.filter(g=>!g.completed).map(g=>g.title).join(", "):"no active goals";
+    const systemPrompt=`You are StudyBuddy AI — a brilliant, warm academic assistant.\nStudent: ${user.name}, Subjects: ${subjectInfo}, Goals: ${goalInfo}, Streak: ${stats.streak}d, Points: ${stats.points}\nBe helpful, concise, encouraging. Use bullet points for explanations. Use emojis naturally. Keep answers under 250 words.`;
+    const messagesForAPI=updatedMsgs.filter(m=>m.role==="user"||m.role==="assistant").map(m=>({role:m.role,content:m.content}));
+    try{
+      const response=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:600,system:systemPrompt,messages:messagesForAPI})});
+      if(!response.ok){const errData=await response.json().catch(()=>({}));throw new Error(errData.error?.message||"HTTP "+response.status);}
+      const data=await response.json();const replyText=data?.content?.[0]?.text;
+      if(replyText)setChatMsgs(prev=>[...prev,{role:"assistant",content:replyText}]);else throw new Error("Empty response");
+    }catch(err){setChatMsgs(prev=>[...prev,{role:"assistant",content:"I encountered an issue: "+err.message+"\n\nPlease try again. 🔄"}]);}
+    setLoading(false);
+  };
+  const e=React.createElement;
+  return e("div",{style:{display:"flex",flexDirection:"column",height:isMobile?"calc(100vh - 130px)":"calc(100vh - 110px)"}},
+    e("div",{style:{...css.card,flex:1,display:"flex",flexDirection:"column",overflow:"hidden",padding:0,marginBottom:0}},
+      e("div",{style:{padding:"11px 16px",borderBottom:`1px solid ${bd}`,display:"flex",alignItems:"center",gap:9}},
+        e("div",{style:{width:36,height:36,borderRadius:"50%",background:C.pLight,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20}},"🤖"),
+        e("div",{style:{flex:1}},e("div",{style:{fontWeight:700,fontSize:14,color:tx}},"StudyBuddy AI"),e("div",{style:{fontSize:11,color:C.secondary,fontWeight:600}},"● Online · Powered by Claude")),
+        e("button",{onClick:()=>setChatMsgs([{role:"assistant",content:"Fresh start! 👋 What would you like to learn today, "+user.name+"?"}]),style:{...css.btn(D?"#334155":"#F1F5F9",mu),padding:"4px 10px",fontSize:11}},"Clear")
+      ),
+      e("div",{style:{flex:1,overflowY:"auto",padding:14,display:"flex",flexDirection:"column",gap:10}},
+        ...chatMsgs.map((m,i)=>e("div",{key:i,style:{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start",gap:7,alignItems:"flex-end"}},
+          m.role==="assistant"&&e("div",{style:{width:26,height:26,borderRadius:"50%",background:C.pLight,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,flexShrink:0}},"🤖"),
+          e("div",{style:{maxWidth:"72%",background:m.role==="user"?C.primary:D?"#334155":"#F1F5F9",color:m.role==="user"?"#fff":tx,borderRadius:m.role==="user"?"14px 14px 4px 14px":"14px 14px 14px 4px",padding:"9px 13px",fontSize:13,lineHeight:1.65,whiteSpace:"pre-wrap",wordBreak:"break-word"}},m.content),
+          m.role==="user"&&e("div",{style:{width:26,height:26,borderRadius:"50%",background:C.primary,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:900,flexShrink:0}},user.avatar)
+        )),
+        loading&&e("div",{style:{display:"flex",gap:7,alignItems:"flex-end"}},e("div",{style:{width:26,height:26,borderRadius:"50%",background:C.pLight,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13}},"🤖"),e("div",{style:{background:D?"#334155":"#F1F5F9",borderRadius:"14px 14px 14px 4px",padding:"10px 14px",display:"flex",gap:5,alignItems:"center"}},e("span",{style:{fontSize:12,color:mu}},"Thinking"),...[0,1,2].map(i=>e("span",{key:i,style:{width:6,height:6,borderRadius:"50%",background:mu,display:"inline-block",animation:`bounce .9s ${i*.2}s infinite`}})))),
+        e("div",{ref:endRef})
+      ),
+      e("div",{style:{padding:"10px 14px",borderTop:`1px solid ${bd}`}},
+        e("div",{style:{display:"flex",gap:6,marginBottom:9,flexWrap:"wrap"}},
+          ...QUICK.slice(0,isMobile?3:6).map(q=>e("button",{key:q,onClick:()=>sendMessage(q),style:{background:D?"#334155":"#F1F5F9",color:mu,border:`1px solid ${bd}`,borderRadius:20,padding:"4px 10px",fontSize:11,cursor:"pointer",whiteSpace:"nowrap"}},q))
+        ),
+        e("div",{style:{display:"flex",gap:7}},
+          e("input",{value:inp,onChange:ev=>setInp(ev.target.value),onKeyDown:ev=>ev.key==="Enter"&&!ev.shiftKey&&sendMessage(),placeholder:"Ask any question…",style:{...css.inp,flex:1}}),
+          e("button",{onClick:()=>sendMessage(),disabled:loading||!inp.trim(),style:{...css.btn(),padding:"8px 16px",opacity:loading||!inp.trim()?.5:1,flexShrink:0}},"↗")
+        )
+      )
+    ),
+    e("style",null,"@keyframes bounce{0%,80%,100%{transform:scale(0)}40%{transform:scale(1)}}")
+  );
+}
+
+function IdeaPlanner({css,D,tx,mu,bd,cardBg,subjects,goals,setGoals,addNotif,user,isMobile}){
+  const[mode,setMode]=useState("manual");
+  const[planTitle,setPlanTitle]=useState("");const[planDesc,setPlanDesc]=useState("");const[planTasks,setPlanTasks]=useState([]);
+  const[taskForm,setTaskForm]=useState({title:"",duration:"",day:"",priority:"medium"});const[saved,setSaved]=useState(false);
+  const[aiTopic,setAiTopic]=useState("");const[aiHours,setAiHours]=useState("5");const[aiPlan,setAiPlan]=useState(null);const[aiLoading,setAiLoading]=useState(false);const[aiSaved,setAiSaved]=useState(false);
+  const pc={high:C.danger,medium:C.accent,low:C.secondary};
+  const addTaskToManual=()=>{if(!taskForm.title.trim())return;setPlanTasks(p=>[...p,{id:Date.now(),...taskForm}]);setTaskForm({title:"",duration:"",day:"",priority:"medium"});};
+  const saveManualPlan=()=>{if(!planTitle.trim()||planTasks.length===0)return;const g={id:Date.now(),title:planTitle,description:planDesc,deadline:"",subject:"",targetHours:"",tasks:planTasks.map(t=>({id:t.id,title:(t.day?"["+t.day+"] ":"")+t.title,duration:t.duration,done:false,doneAt:null})),completed:false,createdAt:today()};setGoals(p=>[...p,g]);addNotif("💡 Plan saved: "+planTitle);setSaved(true);setTimeout(()=>{setSaved(false);setPlanTitle("");setPlanDesc("");setPlanTasks([]);},2000);};
+  const generateAIPlan=async()=>{
+    if(!aiTopic.trim()||aiLoading)return;setAiLoading(true);setAiPlan(null);setAiSaved(false);
+    try{
+      const resp=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:800,system:`You are a study plan generator. Return ONLY valid JSON — no markdown, no backticks. Format: {"title":"string","description":"string","totalHours":number,"tasks":[{"title":"string","description":"string","duration":"string","day":"string","priority":"high|medium|low"}],"tips":["string"]}. Generate 6-8 specific tasks.`,messages:[{role:"user",content:`Create a study plan for: "${aiTopic}". Total time: ${aiHours} hours. Student: ${user.name}.`}]})});
+      if(!resp.ok)throw new Error("HTTP "+resp.status);
+      const data=await resp.json();const rawText=data?.content?.[0]?.text||"";
+      const cleaned=rawText.replace(/```json|```/g,"").trim();setAiPlan(JSON.parse(cleaned));
+    }catch(err){setAiPlan({title:"Error",description:"Could not generate: "+err.message+". Try again.",tasks:[],tips:[]});}
+    setAiLoading(false);
+  };
+  const saveAIPlan=()=>{if(!aiPlan||aiSaved)return;const g={id:Date.now(),title:aiPlan.title,description:aiPlan.description,deadline:"",subject:"",targetHours:aiPlan.totalHours,tasks:(aiPlan.tasks||[]).map(t=>({id:Date.now()+Math.random(),title:"["+t.day+"] "+t.title,duration:t.duration,done:false,doneAt:null})),completed:false,createdAt:today()};setGoals(p=>[...p,g]);addNotif("🎯 AI plan saved: "+aiPlan.title);setAiSaved(true);};
+  const e=React.createElement;
+  return e("div",null,
+    e("div",{style:{display:"flex",background:D?"#334155":"#F1F5F9",borderRadius:10,padding:3,marginBottom:16}},
+      e("button",{onClick:()=>setMode("manual"),style:{flex:1,padding:"9px",borderRadius:8,border:"none",background:mode==="manual"?cardBg:"transparent",color:mode==="manual"?C.primary:mu,cursor:"pointer",fontSize:13,fontWeight:mode==="manual"?700:400}},"✏️ Manual Plan Creator"),
+      e("button",{onClick:()=>setMode("ai"),style:{flex:1,padding:"9px",borderRadius:8,border:"none",background:mode==="ai"?cardBg:"transparent",color:mode==="ai"?C.primary:mu,cursor:"pointer",fontSize:13,fontWeight:mode==="ai"?700:400}},"🤖 AI Plan Generator")
+    ),
+    mode==="manual"&&e("div",null,
+      e("div",{style:css.card},
+        e("h3",{style:{margin:"0 0 12px",fontWeight:700,fontSize:14,color:tx}},"✏️ Create Your Study Plan"),
+        e("div",{style:{display:"flex",flexDirection:"column",gap:10,marginBottom:14}},
+          e("div",null,e("label",{style:{fontSize:11,color:mu,display:"block",marginBottom:3}},"Plan Title *"),e("input",{value:planTitle,onChange:ev=>setPlanTitle(ev.target.value),placeholder:"e.g. Python 30-Day Challenge…",style:{...css.inp,width:"100%"}})),
+          e("div",null,e("label",{style:{fontSize:11,color:mu,display:"block",marginBottom:3}},"Description"),e("input",{value:planDesc,onChange:ev=>setPlanDesc(ev.target.value),placeholder:"What is this plan for?",style:{...css.inp,width:"100%"}}))
+        ),
+        e("h4",{style:{margin:"0 0 10px",fontWeight:700,fontSize:13,color:tx}},"➕ Add Tasks"),
+        e("div",{style:{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"1fr 1fr 80px 110px auto",gap:9,marginBottom:12,alignItems:"end"}},
+          e("div",{style:{gridColumn:isMobile?"1/-1":"auto"}},e("label",{style:{fontSize:10,color:mu,display:"block",marginBottom:3}},"Task Title *"),e("input",{value:taskForm.title,onChange:ev=>setTaskForm(p=>({...p,title:ev.target.value})),placeholder:"e.g. Read Chapter 3…",style:{...css.inp,width:"100%"},onKeyDown:ev=>ev.key==="Enter"&&addTaskToManual()})),
+          e("div",null,e("label",{style:{fontSize:10,color:mu,display:"block",marginBottom:3}},"Duration"),e("input",{value:taskForm.duration,onChange:ev=>setTaskForm(p=>({...p,duration:ev.target.value})),placeholder:"30 min",style:{...css.inp,width:"100%"}})),
+          e("div",null,e("label",{style:{fontSize:10,color:mu,display:"block",marginBottom:3}},"Day"),e("input",{value:taskForm.day,onChange:ev=>setTaskForm(p=>({...p,day:ev.target.value})),placeholder:"Day 1",style:{...css.inp,width:"100%"}})),
+          e("div",null,e("label",{style:{fontSize:10,color:mu,display:"block",marginBottom:3}},"Priority"),e("select",{value:taskForm.priority,onChange:ev=>setTaskForm(p=>({...p,priority:ev.target.value})),style:{...css.inp,width:"100%"}},e("option",{value:"high"},"🔴 High"),e("option",{value:"medium"},"🟡 Med"),e("option",{value:"low"},"🟢 Low"))),
+          e("button",{onClick:addTaskToManual,style:{...css.btn(),alignSelf:"flex-end",padding:"8px 14px"}},"+ Add")
+        ),
+        planTasks.length===0?e("div",{style:{textAlign:"center",padding:"20px 0",color:mu,fontSize:13,border:`2px dashed ${bd}`,borderRadius:10,marginBottom:14}},"No tasks yet. Add tasks above to build your plan!"):
+        e("div",{style:{marginBottom:14}},
+          e("div",{style:{fontWeight:600,fontSize:12,color:mu,marginBottom:8}},planTasks.length+" tasks added:"),
+          ...planTasks.map((t,i)=>e("div",{key:t.id,style:{display:"flex",alignItems:"center",gap:9,padding:"8px 11px",borderRadius:8,marginBottom:5,background:D?"#334155":"#F8FAFC",border:`1px solid ${bd}`}},
+            e("div",{style:{width:22,height:22,borderRadius:6,background:pc[t.priority]+"20",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:800,color:pc[t.priority]}},i+1),
+            e("div",{style:{flex:1}},e("div",{style:{fontSize:13,fontWeight:600,color:tx}},t.title),e("div",{style:{display:"flex",gap:8}},t.day&&e("span",{style:{fontSize:10,color:mu}},t.day),t.duration&&e("span",{style:{fontSize:10,color:mu}},"⏱ "+t.duration),e("span",{style:{fontSize:10,color:pc[t.priority],fontWeight:600}},t.priority))),
+            e("button",{onClick:()=>setPlanTasks(p=>p.filter(x=>x.id!==t.id)),style:{background:"transparent",border:"none",cursor:"pointer",color:mu,fontSize:16}},"×")
+          ))
+        ),
+        saved?e("div",{style:{background:C.sLight,color:C.secondary,borderRadius:9,padding:"10px 14px",fontSize:13,fontWeight:700,textAlign:"center"}},"✅ Plan saved as Goal! Check the Goals page."):
+        e("button",{onClick:saveManualPlan,disabled:!planTitle.trim()||planTasks.length===0,style:{...css.btn(C.purple),width:"100%",justifyContent:"center",padding:"11px",opacity:!planTitle.trim()||planTasks.length===0?.5:1}},"💾 Save as Goal & Track Progress →")
+      )
+    ),
+    mode==="ai"&&e("div",null,
+      e("div",{style:css.card},
+        e("h3",{style:{margin:"0 0 6px",fontWeight:700,fontSize:14,color:tx}},"🤖 AI Study Plan Generator"),
+        e("p",{style:{margin:"0 0 12px",fontSize:12,color:mu}},"Enter a topic → AI generates a detailed task plan → save as a goal to track!"),
+        e("div",{style:{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 120px auto",gap:9,alignItems:"end"}},
+          e("div",null,e("label",{style:{fontSize:11,color:mu,display:"block",marginBottom:3}},"Topic or Subject *"),e("input",{value:aiTopic,onChange:ev=>setAiTopic(ev.target.value),placeholder:"e.g. Machine Learning, Calculus, React.js…",style:{...css.inp,width:"100%"},onKeyDown:ev=>ev.key==="Enter"&&generateAIPlan()})),
+          e("div",null,e("label",{style:{fontSize:11,color:mu,display:"block",marginBottom:3}},"Total Hours"),e("input",{type:"number",value:aiHours,onChange:ev=>setAiHours(ev.target.value),style:{...css.inp,width:"100%"},min:1,max:200})),
+          e("button",{onClick:generateAIPlan,disabled:aiLoading||!aiTopic.trim(),style:{...css.btn(),padding:"9px 18px",alignSelf:"flex-end",opacity:aiLoading||!aiTopic.trim()?.6:1}},aiLoading?"Generating…":"✨ Generate")
+        )
+      ),
+      aiLoading&&e("div",{style:{...css.card,textAlign:"center",padding:44}},e("div",{style:{fontSize:36,marginBottom:12}},"✨"),e("div",{style:{color:mu,fontSize:14,fontWeight:600}},"Claude AI is creating your study plan…"),e("div",{style:{color:mu,fontSize:12,marginTop:5}},"Usually takes 5–10 seconds")),
+      aiPlan&&!aiLoading&&aiPlan.tasks&&aiPlan.tasks.length>0&&e("div",{style:{...css.card,borderTop:`4px solid ${C.primary}`}},
+        e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:10,marginBottom:14}},
+          e("div",null,e("h3",{style:{margin:"0 0 5px",fontWeight:800,fontSize:16,color:tx}},aiPlan.title),e("p",{style:{margin:"0 0 6px",fontSize:12,color:mu}},aiPlan.description),e("div",{style:{display:"flex",gap:10,fontSize:11,color:mu}},e("span",null,"⏱ ~"+aiPlan.totalHours+"h total"),e("span",null,"📋 "+(aiPlan.tasks||[]).length+" tasks"))),
+          e("button",{onClick:saveAIPlan,disabled:aiSaved,style:{...css.btn(aiSaved?C.secondary:C.purple),padding:"9px 18px",fontSize:13}},aiSaved?"✅ Saved as Goal!":"🎯 Save as Goal")
+        ),
+        e("div",{style:{display:"flex",flexDirection:"column",gap:7}},
+          ...(aiPlan.tasks||[]).map((t,i)=>e("div",{key:i,style:{display:"flex",alignItems:"flex-start",gap:10,padding:"10px 12px",borderRadius:9,background:D?"#334155":"#F8FAFC",border:`1px solid ${bd}`}},
+            e("div",{style:{width:26,height:26,borderRadius:7,background:(pc[t.priority]||C.accent)+"20",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:800,color:pc[t.priority]||C.accent,flexShrink:0}},i+1),
+            e("div",{style:{flex:1}},e("div",{style:{display:"flex",alignItems:"center",gap:7,flexWrap:"wrap",marginBottom:2}},e("span",{style:{fontSize:13,fontWeight:700,color:tx}},t.title),t.priority&&e("span",{style:{background:(pc[t.priority]||C.accent)+"20",color:pc[t.priority]||C.accent,borderRadius:20,padding:"1px 7px",fontSize:10,fontWeight:700}},t.priority)),t.description&&e("div",{style:{fontSize:12,color:mu}},t.description)),
+            e("div",{style:{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:3,flexShrink:0}},t.duration&&e("span",{style:{background:C.pLight,color:C.primary,borderRadius:20,padding:"2px 8px",fontSize:11,fontWeight:700}},t.duration),t.day&&e("span",{style:{fontSize:10,color:mu}},t.day))
+          ))
+        ),
+        (aiPlan.tips||[]).length>0&&e("div",{style:{marginTop:12,background:D?"#334155":C.aLight,borderRadius:9,padding:12,border:`1px solid ${C.accent+"40"}`}},e("div",{style:{fontWeight:700,fontSize:12,color:C.accent,marginBottom:7}},"💡 Study Tips"),...aiPlan.tips.map((tip,i)=>e("div",{key:i,style:{fontSize:12,color:tx,marginBottom:4,display:"flex",gap:7}},e("span",{style:{color:C.accent}},"•"),tip)))
+      ),
+      !aiPlan&&!aiLoading&&e("div",{style:{...css.card,textAlign:"center",padding:44}},e("div",{style:{fontSize:44,marginBottom:12}},"🤖"),e("h3",{style:{fontWeight:700,fontSize:15,color:tx,margin:"0 0 7px"}},"AI Study Plan Generator"),e("p",{style:{color:mu,fontSize:13}},"Enter any topic above and AI will create a complete, timed study plan."))
+    )
+  );
+}
+
+function Profile({css,D,tx,mu,bd,cardBg,user,updateUser,stats,subjects,earned,goals,dark,toggleDark,dailyGoal,setDailyGoal,isMobile}){
+  const[edit,setEdit]=useState(false);const[f,setF]=useState({name:user.name,country:user.country||"",college:user.college||""});const[saved,setSaved]=useState(false);
+  const[pw,setPw]=useState({old:"",nw:"",cf:""});const[pwMsg,setPwMsg]=useState({text:"",ok:false});
+  const level=Math.floor(stats.points/100)+1,xp=stats.points%100;
+  const countries=["India","United States","United Kingdom","Canada","Australia","Germany","France","Japan","China","Brazil","Other"];
+  const inp={background:D?"#1e293b":"#F8FAFC",border:`1px solid ${bd}`,borderRadius:8,padding:"8px 11px",fontSize:13,color:tx,outline:"none",boxSizing:"border-box"};
+  const save=()=>{if(!f.name.trim())return;const av=f.name.split(" ").map(n=>n[0]).join("").toUpperCase().slice(0,2);updateUser({name:f.name,country:f.country,college:f.college,avatar:av});setEdit(false);setSaved(true);setTimeout(()=>setSaved(false),2000);};
+  const changePw=()=>{setPwMsg({text:"",ok:false});const users=store.getUsers();if(users[user.email]?.password!==pw.old){setPwMsg({text:"Current password incorrect.",ok:false});return;}if(pw.nw.length<6){setPwMsg({text:"Min 6 characters.",ok:false});return;}if(pw.nw!==pw.cf){setPwMsg({text:"Passwords don't match.",ok:false});return;}store.saveUser(user.email,{...users[user.email],password:pw.nw});setPwMsg({text:"Password updated! ✅",ok:true});setPw({old:"",nw:"",cf:""});};
+  const e=React.createElement;
+  return e("div",null,
+    e("div",{style:{...css.card,marginBottom:14}},
+      e("div",{style:{display:"flex",gap:16,alignItems:"flex-start",flexWrap:"wrap"}},
+        e("div",{style:{textAlign:"center",minWidth:100}},
+          e("div",{style:{width:72,height:72,borderRadius:"50%",background:`linear-gradient(135deg,${C.primary},${C.pDark})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,fontWeight:900,color:"#fff",margin:"0 auto 9px"}},user.avatar),
+          e("div",{style:{display:"inline-flex",background:C.pLight,color:C.primary,borderRadius:20,padding:"3px 11px",fontSize:11,fontWeight:700}},"🎓 Lv."+level),
+          e("div",{style:{fontSize:10,color:mu,marginTop:5}},"Since "+new Date(user.joinedAt).toLocaleDateString("en",{month:"short",year:"numeric"}))
+        ),
+        e("div",{style:{flex:1,minWidth:180}},
+          !edit?e("div",null,
+            e("h2",{style:{margin:"0 0 3px",fontWeight:900,fontSize:isMobile?18:22,color:tx}},user.name),
+            e("p",{style:{margin:"0 0 2px",color:mu,fontSize:12}},"📧 "+user.email),
+            user.country&&e("p",{style:{margin:"0 0 2px",color:mu,fontSize:12}},"🌍 "+user.country),
+            user.college&&e("p",{style:{margin:"0 0 10px",color:mu,fontSize:12}},"🏫 "+user.college),
+            saved&&e("div",{style:{background:C.sLight,color:C.secondary,borderRadius:7,padding:"6px 11px",fontSize:12,marginBottom:8,fontWeight:600}},"✅ Profile saved!"),
+            e("button",{onClick:()=>setEdit(true),style:{...css.btn(),padding:"6px 14px",fontSize:12}},"✏️ Edit")
+          ):e("div",{style:{display:"flex",flexDirection:"column",gap:9}},
+            e("input",{value:f.name,onChange:ev=>setF(p=>({...p,name:ev.target.value})),style:{...inp,width:"100%"},placeholder:"Full name"}),
+            e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:9}},
+              e("select",{value:f.country,onChange:ev=>setF(p=>({...p,country:ev.target.value})),style:{...inp,width:"100%"}},e("option",{value:""},"Country"),...countries.map(c=>e("option",{key:c},c))),
+              e("input",{value:f.college,onChange:ev=>setF(p=>({...p,college:ev.target.value})),style:{...inp,width:"100%"},placeholder:"College/School"})
+            ),
+            e("div",{style:{display:"flex",gap:7}},e("button",{onClick:save,style:{...css.btn(C.secondary),padding:"6px 14px",fontSize:12}},"Save"),e("button",{onClick:()=>setEdit(false),style:{...css.btn(D?"#334155":"#F1F5F9",mu),padding:"6px 12px",fontSize:12}},"Cancel"))
+          )
+        )
+      ),
+      e("div",{style:{marginTop:12,paddingTop:12,borderTop:`1px solid ${bd}`}},
+        e("div",{style:{display:"flex",justifyContent:"space-between",fontSize:10,color:mu,marginBottom:4}},e("span","Lv."+level+" · "+xp+"/100 XP"),e("span","→ Lv."+(level+1))),
+        e("div",{style:{background:D?"#334155":"#E2E8F0",borderRadius:99,height:7}},e("div",{style:{background:`linear-gradient(90deg,${C.primary},${C.pDark})`,width:`${xp}%`,height:"100%",borderRadius:99,transition:"width .5s"}}))
+      )
+    ),
+    e("div",{style:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:14}},
+      ...([["🔥",stats.streak+"d","Streak",C.accent],["⭐",stats.points,"Points",C.primary],["🎯",goals.length,"Goals",C.purple],["📚",stats.totalSessions,"Sessions",C.secondary]].map(([ic,v,l,cl])=>
+        e("div",{key:l,style:{...css.card,margin:0,textAlign:"center",padding:isMobile?10:13}},e("div",{style:{fontSize:18}},ic),e("div",{style:{fontSize:18,fontWeight:800,color:cl,marginTop:3}},v),e("div",{style:{fontSize:10,color:mu}},l))
+      ))
+    ),
+    e("div",{style:{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:14,marginBottom:14}},
+      e("div",{style:css.card},
+        e("h3",{style:{margin:"0 0 12px",fontWeight:700,fontSize:13,color:tx}},"🏆 Badges ("+earned.length+"/"+BADGES.length+")"),
+        e("div",{style:{display:"flex",flexWrap:"wrap",gap:9}},
+          ...BADGES.map(b=>{const ea=earned.find(x=>x.id===b.id);return e("div",{key:b.id,title:b.name,style:{textAlign:"center",opacity:ea?1:.3,filter:ea?"none":"grayscale(1)"}},
+            e("div",{style:{width:42,height:42,borderRadius:10,background:ea?C.pLight:D?"#334155":"#F1F5F9",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,border:ea?`2px solid ${C.primary}`:"1px solid transparent"}},b.icon),
+            e("div",{style:{fontSize:9,fontWeight:600,color:tx,marginTop:2,maxWidth:42,lineHeight:1.3}},b.name)
+          );})
+        )
+      ),
+      e("div",{style:css.card},
+        e("h3",{style:{margin:"0 0 12px",fontWeight:700,fontSize:13,color:tx}},"🔒 Change Password"),
+        ...([["old","Current Password"],["nw","New (6+ chars)"],["cf","Confirm New"]].map(([k,l])=>
+          e("div",{key:k,style:{marginBottom:8}},e("label",{style:{fontSize:10,color:mu,display:"block",marginBottom:3}},l),e("input",{type:"password",value:pw[k],onChange:ev=>setPw(p=>({...p,[k]:ev.target.value})),placeholder:"••••••••",style:{...inp,width:"100%",padding:"7px 10px",fontSize:12}}))
+        )),
+        pwMsg.text&&e("div",{style:{background:pwMsg.ok?C.sLight:C.dLight,color:pwMsg.ok?C.secondary:C.danger,borderRadius:7,padding:"7px 10px",fontSize:11,marginBottom:8}},pwMsg.text),
+        e("button",{onClick:changePw,style:{...css.btn(),padding:"7px 14px",fontSize:12}},"Update Password")
+      )
+    ),
+    e("div",{style:css.card},
+      e("h3",{style:{margin:"0 0 12px",fontWeight:700,fontSize:13,color:tx}},"⚙️ Preferences"),
+      e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${bd}`}},
+        e("div",null,e("div",{style:{fontSize:13,color:tx,fontWeight:600}},"🌙 Dark Mode"),e("div",{style:{fontSize:11,color:mu}},"Saved per account")),
+        e("button",{onClick:toggleDark,style:{width:44,height:24,borderRadius:12,background:dark?C.primary:"#CBD5E1",border:"none",cursor:"pointer",position:"relative",transition:"background .3s"}},e("span",{style:{position:"absolute",top:3,left:dark?23:3,width:18,height:18,borderRadius:"50%",background:"#fff",transition:"left .3s"}}))
+      ),
+      e("div",{style:{padding:"10px 0"}},
+        e("div",{style:{fontSize:13,color:tx,fontWeight:600,marginBottom:6}},"📊 Daily Goal: ",e("span",{style:{color:C.primary}},dailyGoal+" min")),
+        e("input",{type:"range",min:30,max:480,step:15,value:dailyGoal,onChange:ev=>setDailyGoal(+ev.target.value),style:{width:"100%"}})
+      )
+    ),
+    e("div",{style:{...css.card,textAlign:"center",padding:"12px 16px"}},
+      e("div",{style:{fontSize:12,color:mu,lineHeight:1.7}},"© 2026 StudyBuddy · Created by ",e("strong",{style:{color:tx}},"Divyanshu Pandya")," and ",e("strong",{style:{color:tx}},"Bhavin Rathod")," for Hackathon 🏆")
+    )
+  );
+}
+
+ReactDOM.render(React.createElement(App), document.getElementById("root"));
+</script>
+</body>
+</html>
